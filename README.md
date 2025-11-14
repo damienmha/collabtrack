@@ -11,7 +11,7 @@ This project is both a case study of a pain point/modern issue and a Minimum Via
 
 | Category | Technology | Purpose |
 | :--- | :--- | :--- |
-| **Backend Framework** | Python, **Flask** | Application core, routing, and business logic. |
+| **Backend Framework** | Python, **Flask** | Application core, routing. |
 | **Database** | **PostgreSQL** (Dockerized), SQLAlchemy | Stores all relational metadata (Users, Projects, Version history). |
 | **Cloud Storage** | **AWS S3**, **Boto3** | Secure, scalable storage for project files. |
 | **Security** | **Bcrypt**, Python `session` | Password hashing and secure session management. |
@@ -21,13 +21,13 @@ This project is both a case study of a pain point/modern issue and a Minimum Via
 
 ## Key Features & Competencies
 
-### 1. Robust User Authentication & Security (PM/DE)
+### 1. Robust User Authentication & Security
 
 * Implemented **secure registration** using `bcrypt` for password hashing.
 * Enforced **application security** with a custom `@login_required` decorator, ensuring only authenticated users can access core routes like project creation and file upload.
 * Utilized **DOTENV** to keep all sensitive credentials (AWS Keys, database passwords) out of the codebase.
 
-### 2. Three-Tier Data & Storage Architecture (DE/DA)
+### 2. Three-Tier Data & Storage Architecture
 
 Designed and implemented a scalable, decoupled storage system:
 * **Metadata:** Structured data (version numbers, file names, owner IDs) is stored in **PostgreSQL**.
