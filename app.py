@@ -8,6 +8,20 @@ from flask_bcrypt import Bcrypt
 from models import User, Project, Version
 from s3_upload import upload_file_to_s3, allowed_file
 from werkzeug.utils import secure_filename
+from functools import wraps
+
+def login_required(f):
+    """
+    Decorator that checks if a user is logged into the session.
+    If not, redirects them to the login page.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('logged_in') is not True:
+            # Redirect to the login page if not logged in
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # INITIALIZE APP & CONFIG
 
@@ -112,10 +126,11 @@ def create_app():
     # this route should be below the login_test route)
 
     @app.route('/create_project', methods=['GET', 'POST'])
+    @login_required
     def create_project():
-        # --- Check for simulated login state ---
-        if 'user_id' not in session or not session.get('logged_in'):
-            return "Please log in (or visit /login_test) to create a project.", 401
+        # Check for simulated login state
+        # if 'user_id' not in session or not session.get('logged_in'):
+            # return "Please log in (or visit /login_test) to create a project.", 401
 
         owner_id = session['user_id']
         
@@ -156,10 +171,11 @@ def create_app():
         return f"Project **{project_name}** created successfully! Now ready for file uploads."
 
     @app.route('/upload_version', methods=['GET', 'POST'])
+    @login_required
     def upload_version():
         # Authentication Check
-        if 'user_id' not in session or not session.get('logged_in'):
-            return "Please log in (or visit /login_test) to upload a version.", 401
+        # if 'user_id' not in session or not session.get('logged_in'):
+            # return "Please log in (or visit /login_test) to upload a version.", 401
 
         uploader_id = session['user_id']
         
@@ -264,6 +280,54 @@ def create_app():
         version = request.args.get('version')
         return f"File **{filename}** uploaded successfully as **Version {version}**! Check your S3 bucket and database."
     
+
+    @app.route('/login', methods=['GET', 'POST'])
+    def login():
+        if request.method == 'POST':
+            email = request.form.get('email')
+            password = request.form.get('password')
+
+            # 1. Find the user by email
+            user = db.session.scalar(
+                db.select(User).filter_by(email=email)
+            )
+
+            # 2. Verify existence and password hash
+            if user and bcrypt.check_password_hash(user.password_hash, password):
+                
+                # Successful login: Set session variables
+                session['user_id'] = user.user_id
+                session['logged_in'] = True
+                
+                # Redirect to a protected page (e.g., project upload)
+                return redirect(url_for('upload_version')) 
+            else:
+                # Failed login attempt
+                return "Invalid email or password.", 401
+
+        # Handle GET request: Show login form
+        return """
+        <h1>Login</h1>
+        <form method="POST">
+            <label for="email">Email:</label><br>
+            <input type="email" id="email" name="email" required><br><br>
+            <label for="password">Password:</label><br>
+            <input type="password" id="password" name="password" required><br><br>
+            <input type="submit" value="Log In">
+        </form>
+        """
+
+    @app.route('/logout')
+    def logout():
+        # Clear all session variables
+        session.pop('user_id', None)
+        session.pop('logged_in', None)
+        
+        # Optional: You can explicitly clear the entire session dictionary
+        # session.clear() 
+
+        return redirect(url_for('login')) # Redirect back to the login page
+
     return app
 
 # Run the app
