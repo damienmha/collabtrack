@@ -1,0 +1,8 @@
+# Environment & Secrets
+.env
+venv/
+# Python Generated Files
+__pycache__/
+*.pyc
+# OS Files (Mac)
+.DS_Store
