@@ -88,7 +88,7 @@ def create_app():
                 print(f"Database error during registration: {e}")
                 return "Registration failed due to a database error.", 500
         
-        # --- Handle GET request: Show registration form ---
+        # Handle GET request: Show registration form
         # NOTE: We are skipping HTML templates for now for simplicity, 
         # so we will just return a basic form HTML directly.
         return """
