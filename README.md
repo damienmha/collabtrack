@@ -15,7 +15,7 @@ This project is both a case study of a pain point/modern issue and a Minimum Via
 | **Database** | **PostgreSQL** (Dockerized), SQLAlchemy | Stores all relational metadata (Users, Projects, Version history). |
 | **Cloud Storage** | **AWS S3**, **Boto3** | Secure, scalable storage for project files. |
 | **Security** | **Bcrypt**, Python `session` | Password hashing and secure session management. |
-| **Development** | Git, GitHub, DOTENV | Version control and secure environment configuration. |
+| **Development** | Git, GitHub | Version control and secure environment configuration. |
 
 ---
 
@@ -41,7 +41,7 @@ Designed and implemented a scalable, decoupled storage system:
 
 ---
 
-## 🛠️ Next Steps
+## Next Steps
 
 The following features will complete the MVP cycle:
 
