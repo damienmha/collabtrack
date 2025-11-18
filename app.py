@@ -1,11 +1,9 @@
-# app.py
-
-from flask import Flask, render_template, redirect, url_for, request, session
+from flask import Flask, render_template, redirect, url_for, request, session, flash
 from config import Config
 from database import db
 import os 
 from flask_bcrypt import Bcrypt
-from models import User, Project, Version
+from models import db, User, Project, Version
 from s3_upload import upload_file_to_s3, allowed_file
 from werkzeug.utils import secure_filename
 from functools import wraps
@@ -327,6 +325,34 @@ def create_app():
         # session.clear() 
 
         return redirect(url_for('login')) # Redirect back to the login page
+
+    @app.route('/dashboard')
+    @login_required
+    def dashboard():
+        # 1. Get the current user's ID from the session
+        user_id = session['user_id']
+        
+        # 2. Query the database for projects owned by this user
+        # We select all Project objects filtered by the owner_id
+        projects = db.session.scalars(
+            db.select(Project).filter_by(owner_id=user_id)
+        ).all()
+        
+        # 3. Create a basic HTML response to display the project list
+        html_content = "<h1>Your Project Dashboard</h1>"
+        html_content += "<h2>Projects:</h2>"
+        
+        if projects:
+            html_content += "<ul>"
+            for project in projects:
+                # For now, we just list the project name and ID
+                html_content += f"<li>Project ID: {project.project_id} | Name: {project.name}</li>"
+            html_content += "</ul>"
+        else:
+            html_content += "<p>You do not currently own any projects.</p>"
+            html_content += f'<p><a href="{url_for("create_project")}">Click here to create your first project.</a></p>'
+            
+        return html_content
 
     return app
 
