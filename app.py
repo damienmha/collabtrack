@@ -345,13 +345,67 @@ def create_app():
         if projects:
             html_content += "<ul>"
             for project in projects:
-                # For now, we just list the project name and ID
-                html_content += f"<li>Project ID: {project.project_id} | Name: {project.name}</li>"
+                # CHANGE: Now links to the new project_details route
+                project_link = url_for('project_details', project_id=project.project_id)
+                html_content += f"""
+                    <li>
+                        Project ID: {project.project_id} | 
+                        Name: <a href="{project_link}">{project.name}</a>
+                    </li>
+                """
             html_content += "</ul>"
         else:
             html_content += "<p>You do not currently own any projects.</p>"
             html_content += f'<p><a href="{url_for("create_project")}">Click here to create your first project.</a></p>'
             
+        return html_content
+    
+    @app.route('/project/<int:project_id>')
+    @login_required
+    def project_details(project_id):
+        user_id = session['user_id']
+        
+        # 1. Fetch the Project and verify ownership
+        project = db.session.scalar(
+            db.select(Project)
+              .filter_by(project_id=project_id, owner_id=user_id)
+        )
+
+        if not project:
+            return "Project not found or you do not have permission to view it.", 404
+
+        # 2. Fetch all Versions associated with this Project
+        versions = db.session.scalars(
+            db.select(Version)
+              .filter_by(project_id=project_id)
+              .order_by(Version.uploaded_at.desc()) # Show newest versions first
+        ).all()
+
+        # 3. Build the HTML output
+        html_content = f"<h1>Project: {project.name} (ID: {project.project_id})</h1>"
+        html_content += "<h2>Version History:</h2>"
+        
+        if versions:
+            html_content += "<table border='1'>"
+            html_content += "<tr><th>Version #</th><th>File Name</th><th>Uploaded At</th><th>Notes</th><th>Download</th></tr>"
+            
+            for version in versions:
+                # We'll link to a download route in the next step
+                download_link = "#" # Placeholder for future /download route
+                
+                html_content += f"""
+                    <tr>
+                        <td>{version.version_number}</td>
+                        <td>{version.file_name}</td>
+                        <td>{version.uploaded_at.strftime('%Y-%m-%d %H:%M')}</td>
+                        <td>{version.version_note or 'N/A'}</td>
+                        <td><a href="{download_link}">Download (Future)</a></td>
+                    </tr>
+                """
+            html_content += "</table>"
+        else:
+            html_content += "<p>No versions have been uploaded for this project yet.</p>"
+
         return html_content
 
     return app
