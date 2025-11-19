@@ -7,6 +7,7 @@ from models import db, User, Project, Version
 from s3_upload import upload_file_to_s3, allowed_file
 from werkzeug.utils import secure_filename
 from functools import wraps
+import boto3
 
 def login_required(f):
     """
@@ -390,9 +391,9 @@ def create_app():
             html_content += "<tr><th>Version #</th><th>File Name</th><th>Uploaded At</th><th>Notes</th><th>Download</th></tr>"
             
             for version in versions:
-                # We'll link to a download route in the next step
-                download_link = "#" # Placeholder for future /download route
-                
+                # Link directly to the new download route using version_id
+                download_link = url_for('download_file', version_id=version.version_id)
+
                 html_content += f"""
                     <tr>
                         <td>{version.version_number}</td>
@@ -407,6 +408,56 @@ def create_app():
             html_content += "<p>No versions have been uploaded for this project yet.</p>"
 
         return html_content
+
+    @app.route('/download/<int:version_id>')
+    @login_required
+    def download_file(version_id):
+        user_id = session['user_id']
+
+        # 1. Fetch the Version record
+        version = db.session.scalar(
+            db.select(Version).filter_by(version_id=version_id)
+        )
+
+        if not version:
+            return "Version not found.", 404
+
+        # 2. Authorization Check: Ensure the user owns the project
+        project = db.session.scalar(
+            db.select(Project).filter_by(project_id=version.project_id)
+        )
+        
+        # Deny access if the user is not the project owner
+        if project.owner_id != user_id:
+            return "Permission denied. You do not own this project.", 403
+
+        # 3. Generate the Signed S3 URL
+        try:
+            # We use boto3 to generate a pre-signed URL for temporary, secure access
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=app.config['AWS_ACCESS_KEY_ID'],
+                aws_secret_access_key=app.config['AWS_SECRET_ACCESS_KEY'],
+                region_name=app.config['AWS_REGION']
+            )
+            
+            # Generate the URL that forces the browser to download the file
+            download_url = s3_client.generate_presigned_url(
+                'get_object',
+                Params={
+                    'Bucket': app.config['S3_BUCKET_NAME'],
+                    'Key': version.storage_key,
+                    'ResponseContentDisposition': f'attachment; filename="{version.file_name}"'
+                },
+                ExpiresIn=300 # URL expires in 5 minutes (300 seconds)
+            )
+
+            # 4. Redirect the user to the secure download link
+            return redirect(download_url)
+
+        except Exception as e:
+            print(f"Error generating S3 signed URL for download: {e}")
+            return "Could not generate download link. Check server logs.", 500
 
     return app
 
